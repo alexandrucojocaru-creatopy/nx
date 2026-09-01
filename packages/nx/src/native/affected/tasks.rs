@@ -174,12 +174,6 @@ pub(crate) fn compute_affected_tasks(
     Ok(affected)
 }
 
-/// Whether any changed file is one this instruction would hash.
-///
-/// `TaskOutput` is deliberately absent: it resolves to a dependent task's build
-/// artifacts, which are gitignored and do not exist yet when affected runs, so
-/// intersecting it is always empty and misleadingly so. Dependency changes reach
-/// a consumer through task-edge propagation instead.
 /// The files an instruction matched, and which pattern reached each.
 ///
 /// Mirrors `instruction_matches`, but reports rather than short-circuits. The
@@ -252,6 +246,12 @@ fn instruction_matches_detail(
     }
 }
 
+/// Whether any changed file is one this instruction would hash.
+///
+/// `TaskOutput` is deliberately absent: it resolves to a dependent task's build
+/// artifacts, which are gitignored and do not exist yet when affected runs, so
+/// intersecting it is always empty and misleadingly so. Dependency changes reach
+/// a consumer through task-edge propagation instead.
 fn instruction_matches(
     instruction: &HashInstruction,
     files: &[String],
