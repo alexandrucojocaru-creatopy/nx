@@ -71,6 +71,7 @@ export async function showProjectsHandler(
           'Affected tasks',
           nxArgs
         );
+        await output.drain();
         return;
       }
       const owning = new Set(
@@ -93,6 +94,7 @@ export async function showProjectsHandler(
         nxJson
       );
       printAffectedExplanation(reasons, 'Affected projects', nxArgs);
+      await output.drain();
       return;
     } else {
       graph = await getAffectedGraph(touchedFiles, nxJson, graph);
