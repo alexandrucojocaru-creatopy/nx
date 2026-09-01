@@ -63,13 +63,13 @@ export async function showProjectsHandler(
         nxJson,
         targets: args.withTarget,
         touchedFiles,
-        explain: nxArgs.explain,
+        explain: nxArgs.explain !== undefined,
       });
-      if (nxArgs.explain) {
+      if (nxArgs.explain !== undefined) {
         printAffectedExplanation(
           affectedTasks.reasons ?? {},
           'Affected tasks',
-          nxArgs
+          { json: nxArgs.explain === 'json' || args.json }
         );
         await output.drain();
         return;
@@ -85,7 +85,7 @@ export async function showProjectsHandler(
           Object.entries(graph.nodes).filter(([name]) => owning.has(name))
         ),
       };
-    } else if (nxArgs.explain) {
+    } else if (nxArgs.explain !== undefined) {
       // Reports the selection rather than filtering to it, so the later
       // --projects and --withTarget filters would only obscure the answer.
       const { reasons } = await filterAffectedWithReasons(
@@ -93,7 +93,9 @@ export async function showProjectsHandler(
         touchedFiles,
         nxJson
       );
-      printAffectedExplanation(reasons, 'Affected projects', nxArgs);
+      printAffectedExplanation(reasons, 'Affected projects', {
+        json: nxArgs.explain === 'json' || args.json,
+      });
       await output.drain();
       return;
     } else {
