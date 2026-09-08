@@ -25,6 +25,7 @@ import { findMatchingProjects } from '../../utils/find-matching-projects';
 import { generateGraph } from '../graph/graph';
 import { computeAffectedTasks } from '../../project-graph/affected/affected-tasks';
 import { printAffectedExplanation } from '../../project-graph/affected/print-explanation';
+import { pruneTaskGraphToSelection } from '../../tasks-runner/prune-task-graph';
 import { isExplaining } from '../../project-graph/affected/affected-reasons';
 import { resolveAffectedGranularity } from '../../project-graph/affected/granularity';
 import type { TaskSelection } from '../../tasks-runner/run-command';
@@ -89,10 +90,19 @@ export async function affected(
     // --explain reports the selection rather than acting on it: someone asking
     // why a task is affected does not also want it to run.
     if (isExplaining(nxArgs.explain)) {
+      // The closure the selected tasks drag in, which is what actually runs.
+      const dependencyCount =
+        Object.keys(
+          pruneTaskGraphToSelection(
+            affectedTasks.taskGraph,
+            affectedTasks.affectedTaskIds
+          ).tasks
+        ).length - affectedTasks.affectedTaskIds.size;
       printAffectedExplanation(
         affectedTasks.reasons ?? {},
         'Affected tasks',
-        nxArgs.explain
+        nxArgs.explain,
+        dependencyCount
       );
       await output.drain();
       process.exit(0);
