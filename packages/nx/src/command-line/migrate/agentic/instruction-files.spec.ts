@@ -1,7 +1,13 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
-import { stepFilePath } from './handoff';
+import { stepHandoffPath, stepPromptsDir } from './handoff';
 import { writeStepInstructionFiles } from './instruction-files';
 
 describe('writeStepInstructionFiles', () => {
@@ -12,9 +18,6 @@ describe('writeStepInstructionFiles', () => {
   beforeEach(() => {
     workspaceRoot = mkdtempSync(join(tmpdir(), 'nx-instruction-files-'));
     runDir = join(workspaceRoot, '.nx', 'migrate-runs', '23.1.0');
-    mkdirSync(dirname(stepFilePath(runDir, migration, '.json')), {
-      recursive: true,
-    });
   });
 
   afterEach(() => {
@@ -35,16 +38,16 @@ describe('writeStepInstructionFiles', () => {
   }
 
   const instructionsRelativePath =
-    '.nx/migrate-runs/23.1.0/handoffs/@nx/eslint/update-23-1-0.instructions.md';
+    '.nx/migrate-runs/23.1.0/prompts/@nx/eslint/update-23-1-0/instructions.md';
 
-  it('writes both prompts beside the step handoff file', () => {
+  it('writes both prompts to their own directory beside the handoff file', () => {
     const files = write(
       'the system prompt\nover two lines',
       'the instructions'
     );
 
     expect(files.systemPromptFilePath).toBe(
-      join(runDir, 'handoffs', '@nx', 'eslint', 'update-23-1-0.system.md')
+      join(runDir, 'prompts', '@nx', 'eslint', 'update-23-1-0', 'system.md')
     );
     expect(readFileSync(files.systemPromptFilePath, 'utf-8')).toBe(
       'the system prompt\nover two lines'
@@ -92,8 +95,7 @@ describe('writeStepInstructionFiles', () => {
   });
 
   // A `..` segment would put the write outside the run directory entirely.
-  it('sanitizes migration identifiers into the file names', () => {
-    mkdirSync(join(runDir, 'handoffs', '@scope', 'pkg'), { recursive: true });
+  it('sanitizes migration identifiers into the directory names', () => {
     const files = writeStepInstructionFiles({
       workspaceRoot,
       runDir,
@@ -103,29 +105,82 @@ describe('writeStepInstructionFiles', () => {
     });
 
     expect(files.systemPromptFilePath).toBe(
-      join(runDir, 'handoffs', '@scope', 'pkg', '_.system.md')
+      join(runDir, 'prompts', '@scope', 'pkg', '_', 'system.md')
     );
   });
 
-  it('names the file it could not write', () => {
-    expect(() =>
-      writeStepInstructionFiles({
+  // The longest name whose handoff file still fits a 255-character filename,
+  // so the prompt files have to survive it too.
+  it('writes prompts for a migration name that fills the handoff filename', () => {
+    const files = writeStepInstructionFiles({
+      workspaceRoot,
+      runDir,
+      migration: { package: '@nx/eslint', name: 'a'.repeat(250) },
+      systemPrompt: 'system prompt',
+      instructions: 'do the thing',
+    });
+
+    expect(readFileSync(files.systemPromptFilePath, 'utf-8')).toBe(
+      'system prompt'
+    );
+  });
+
+  // A migration named `<other>.json` would claim `<other>`'s handoff path if
+  // prompts shared the handoffs subtree. Both orders have to survive it.
+  describe('a migration name that spells a sibling handoff file', () => {
+    const handoffOwner = { package: '@nx/eslint', name: 'update-23-1-0' };
+    const promptOwner = { package: '@nx/eslint', name: 'update-23-1-0.json' };
+
+    function writeSiblingHandoff() {
+      const path = stepHandoffPath(runDir, handoffOwner);
+      mkdirSync(dirname(path), { recursive: true });
+      writeFileSync(path, '{}', 'utf-8');
+      return path;
+    }
+
+    function writePrompts() {
+      return writeStepInstructionFiles({
         workspaceRoot,
-        runDir: join(runDir, 'does', 'not', 'exist'),
-        migration,
+        runDir,
+        migration: promptOwner,
         systemPrompt: 'system prompt',
         instructions: 'do the thing',
-      })
-    ).toThrow(/Could not write the migration step's system prompt to .*ENOENT/);
+      });
+    }
+
+    it('writes its prompts when that handoff file already exists', () => {
+      writeSiblingHandoff();
+
+      expect(readFileSync(writePrompts().systemPromptFilePath, 'utf-8')).toBe(
+        'system prompt'
+      );
+    });
+
+    it('leaves that handoff path writable once its prompts exist', () => {
+      writePrompts();
+      const path = writeSiblingHandoff();
+
+      expect(readFileSync(path, 'utf-8')).toBe('{}');
+    });
   });
 
-  // A directory in the way fails the second write and only the second, which
-  // is what it takes to see whether the diagnostic names the right file.
-  it('names the instructions file when that is the write that failed', () => {
-    mkdirSync(stepFilePath(runDir, migration, '.instructions.md'));
+  // A directory in the way fails one write and only that one, which is what it
+  // takes to see whether the diagnostic names the right file.
+  it.each([
+    ['system prompt', 'system.md'],
+    ['instructions', 'instructions.md'],
+  ])(
+    'names the %s file when that is the write that failed',
+    (purpose, file) => {
+      mkdirSync(join(stepPromptsDir(runDir, migration), file), {
+        recursive: true,
+      });
 
-    expect(() => write()).toThrow(
-      /Could not write the migration step's instructions to .*update-23-1-0\.instructions\.md/
-    );
-  });
+      expect(() => write()).toThrow(
+        new RegExp(
+          `Could not write the migration step's ${purpose} to .*${file}`
+        )
+      );
+    }
+  );
 });

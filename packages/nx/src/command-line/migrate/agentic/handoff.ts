@@ -6,6 +6,7 @@ import {
   HANDOFFS_DIR_NAME,
   HandoffFile,
   MIGRATE_RUNS_RELATIVE_DIR,
+  PROMPTS_DIR_NAME,
 } from './types';
 
 /** Returns the run directory for a given workspace + run id (target version). */
@@ -78,30 +79,50 @@ function sanitizeSegment(value: string): string {
 }
 
 /**
- * Absolute path of a migration step's scratch file, under the run directory's
- * `handoffs/` subtree: the agent's pre-authorized write scope stops there, so
- * anything outside it costs an approval prompt. A package scope becomes a real
+ * A run subtree's per-package directory. A package scope becomes a real
  * subdirectory, which also keeps two packages' same-named migrations apart.
  * Segments are sanitized so the path is writable on every platform.
  */
-export function stepFilePath(
+function packageDir(
   runDir: string,
-  migration: { package: string; name: string },
-  extension: string
+  subtree: string,
+  migration: { package: string }
 ): string {
   return join(
     runDir,
-    HANDOFFS_DIR_NAME,
-    ...migration.package.split('/').map(sanitizeSegment),
-    `${sanitizeSegment(migration.name)}${extension}`
+    subtree,
+    ...migration.package.split('/').map(sanitizeSegment)
   );
 }
 
+/**
+ * Absolute path of a migration step's handoff file, under the run directory's
+ * `handoffs/` subtree: the agent's pre-authorized write scope stops there, so
+ * anything outside it costs an approval prompt.
+ */
 export function stepHandoffPath(
   runDir: string,
   migration: { package: string; name: string }
 ): string {
-  return stepFilePath(runDir, migration, '.json');
+  return join(
+    packageDir(runDir, HANDOFFS_DIR_NAME, migration),
+    `${sanitizeSegment(migration.name)}.json`
+  );
+}
+
+/**
+ * Directory holding a step's prompt files. The migration name is a directory
+ * rather than a filename prefix so the file names stay constant: a name near
+ * the 255-character filename limit would push a suffixed file over it.
+ */
+export function stepPromptsDir(
+  runDir: string,
+  migration: { package: string; name: string }
+): string {
+  return join(
+    packageDir(runDir, PROMPTS_DIR_NAME, migration),
+    sanitizeSegment(migration.name)
+  );
 }
 
 export type HandoffReadFailureReason =
