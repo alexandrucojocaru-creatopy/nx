@@ -12,10 +12,10 @@ export type { AgentId };
 export const MIGRATE_RUNS_RELATIVE_DIR = '.nx/migrate-runs';
 
 /**
- * The one subtree of a run directory the agent's pre-authorized write scope
- * reaches, holding the handoff files. Everything beside it is state Nx owns.
- * Without it, package names would occupy the run directory's top level and
- * leave Nx no name it could add there safely.
+ * The subtree holding the handoff files, and the one Claude Code's generated
+ * write rule pre-authorizes. Everything beside it is state Nx owns. Without
+ * it, package names would occupy the run directory's top level and leave Nx
+ * no name it could add there safely.
  */
 export const HANDOFFS_DIR_NAME = 'handoffs';
 
@@ -78,9 +78,9 @@ export interface InvocationContext {
   systemPrompt: string;
   /** Single-line command-line text pointing the agent at its instructions. */
   instructionsPointer: string;
-  /** Handoff contract plus a pointer at `systemPromptFilePath`, carried inline. */
+  /** Inline handoff contract and pointer to `systemPromptFilePath`. */
   inlineSystemContext: string;
-  /** Shorter `inlineSystemContext`, swapped in when the command line would overflow. */
+  /** Shorter `inlineSystemContext`, substituted on Windows shim overflow. */
   inlineSystemContextFallback: string;
   workspaceRoot: string;
   /**

@@ -63,10 +63,6 @@ export function initRunDir(workspaceRoot: string, runId: string): string {
 // agent can't write to.
 const WINDOWS_RESERVED_NAMES = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
 
-/**
- * The bare `.` / `..` check must come first — otherwise a malformed migration
- * name of exactly `..` would let the handoff write escape the run directory.
- */
 function sanitizeSegment(value: string): string {
   if (value === '.' || value === '..') return '_';
   let sanitized = value.replace(/[\x00-\x1f<>:"/\\|?*]/g, '_');
@@ -81,7 +77,6 @@ function sanitizeSegment(value: string): string {
 /**
  * A run subtree's per-package directory. A package scope becomes a real
  * subdirectory, which also keeps two packages' same-named migrations apart.
- * Segments are sanitized so the path is writable on every platform.
  */
 function packageDir(
   runDir: string,
@@ -96,9 +91,9 @@ function packageDir(
 }
 
 /**
- * Absolute path of a migration step's handoff file, under the run directory's
- * `handoffs/` subtree: the agent's pre-authorized write scope stops there, so
- * anything outside it costs an approval prompt.
+ * Absolute path of a migration step's handoff file under `handoffs/`.
+ * Claude Code's generated rule pre-authorizes writes in this subtree.
+ * Moving the handoff outside it loses that pre-authorization.
  */
 export function stepHandoffPath(
   runDir: string,
