@@ -95,7 +95,7 @@ describe('new', () => {
       expect(readJson(tree, 'my-workspace/package.json')).toMatchSnapshot();
     });
 
-    it('should not add typescript for presets that scaffold nothing', async () => {
+    it('should pin typescript for presets that scaffold nothing', async () => {
       for (const preset of [Preset.Apps, Preset.NPM]) {
         tree = createTree();
         tree.root = process.cwd();
@@ -109,7 +109,7 @@ describe('new', () => {
         });
 
         const { devDependencies } = readJson(tree, 'my-workspace/package.json');
-        expect(devDependencies).not.toHaveProperty('typescript');
+        expect(devDependencies.typescript).toBe(typescriptVersion);
       }
     });
 

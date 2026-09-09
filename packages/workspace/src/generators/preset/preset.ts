@@ -28,8 +28,8 @@ async function createPreset(tree: Tree, options: Schema) {
   if (options.preset === Preset.Apps || options.preset === Preset.NPM) {
     // These presets generate no project, so nothing downstream would set the
     // formatter up and the choice would be dropped. Only the formatter is
-    // configured here - `@nx/js:init` would also add TypeScript and register
-    // its plugin, which both presets deliberately leave out.
+    // configured here - `@nx/js:init` would also register the TypeScript
+    // plugin, which both presets deliberately leave out.
     //
     // `@nx/js` is only in the new workspace's package.json, not necessarily on
     // disk. `validateOptions` allows `skipInstall` with these presets, so the
