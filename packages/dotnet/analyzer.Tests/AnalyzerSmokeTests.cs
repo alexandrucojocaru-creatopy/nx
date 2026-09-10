@@ -182,6 +182,28 @@ public class AnalyzerSmokeTests : IDisposable
     }
 
     [Fact]
+    public void TestingPlatformApplication_GetsATestTarget()
+    {
+        // Set directly rather than restoring a real MTP package, which would
+        // need the network. The property is what the analyzer reads either way.
+        var targets = Analyze(WriteProject("MyTests", """
+            <OutputType>Exe</OutputType>
+            <IsTestingPlatformApplication>true</IsTestingPlatformApplication>
+            """));
+
+        Assert.Contains("test", targets.Keys);
+    }
+
+    [Fact]
+    public void PlainExecutable_GetsNoTestTarget()
+    {
+        var targets = Analyze(WriteProject("MyApp", "<OutputType>Exe</OutputType>"));
+
+        Assert.DoesNotContain("test", targets.Keys);
+        Assert.Contains("run", targets.Keys);
+    }
+
+    [Fact]
     public void EvaluatedImportsAndLinkedFiles_AreInputsOnBuild()
     {
         Directory.CreateDirectory(Path.Combine(_workspaceRoot, "build"));

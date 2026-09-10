@@ -133,6 +133,24 @@ Run it once before `build`.
 The files it writes to `obj` are excluded from the outputs of `build`, `publish`, and `pack`, so a
 cache hit never replaces a machine's own restore.
 
+### Test project detection
+
+A project gets a `test` target, and no `pack` target, when any of these hold:
+
+- `IsTestProject` is `true`. The .NET SDK sets it for projects that reference `Microsoft.NET.Test.Sdk`.
+- `IsTestingPlatformApplication` is `true`. [Microsoft.Testing.Platform](https://learn.microsoft.com/en-us/dotnet/core/testing/unit-testing-platform-intro) sets this one for its own runners and leaves `IsTestProject` unset.
+- The project references a test framework: xunit (including xunit.v3), NUnit, MSTest, TUnit, `Microsoft.NET.Test.Sdk`, or any `Microsoft.Testing.*` package.
+
+Microsoft.Testing.Platform imports its targets from a restored package, so `IsTestingPlatformApplication` has no value until the project has been restored. Restore writes those imports under `obj`, which Nx doesn't watch. Run `nx reset` once afterwards to pick the property up. A project that references one of the frameworks above is detected without restoring, since package references come straight from the project file.
+
+If your runner is a custom one that Nx doesn't recognize, say so in the project file:
+
+```xml
+<PropertyGroup>
+  <IsTestProject>true</IsTestProject>
+</PropertyGroup>
+```
+
 ### Test results
 
 `dotnet test` writes nothing to disk on its own.

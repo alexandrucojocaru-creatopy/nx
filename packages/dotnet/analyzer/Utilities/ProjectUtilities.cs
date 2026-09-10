@@ -1,4 +1,5 @@
 using Microsoft.Build.Execution;
+using MsbuildAnalyzer.Models;
 
 namespace MsbuildAnalyzer.Utilities;
 
@@ -261,5 +262,36 @@ public static class ProjectUtilities
 
 
         return techs;
+    }
+
+    /// <summary>
+    /// Prefixes, not names: each family spans several packages and NuGet ids are
+    /// case-insensitive, so <c>xunit</c> has to reach <c>xunit.v3.mtp-v2</c> and
+    /// <c>NUnit</c> has to reach <c>NUnit3TestAdapter</c>.
+    /// </summary>
+    private static readonly string[] TestPackagePrefixes =
+    [
+        "Microsoft.NET.Test.Sdk",
+        "Microsoft.Testing",
+        "xunit",
+        "NUnit",
+        "MSTest",
+        "TUnit",
+    ];
+
+    /// <summary>
+    /// Whether the project gets a <c>test</c> target. The package references are
+    /// the only signal available before the first restore, since
+    /// <see cref="EvaluatedProperties.IsTestingPlatformApplication"/> comes from
+    /// a restored package.
+    /// </summary>
+    public static bool IsTestProject(
+        EvaluatedProperties properties,
+        IEnumerable<PackageReference> packageRefs)
+    {
+        return properties.IsTestProject ||
+               properties.IsTestingPlatformApplication ||
+               packageRefs.Any(p => TestPackagePrefixes.Any(
+                   prefix => p.Include.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)));
     }
 }
